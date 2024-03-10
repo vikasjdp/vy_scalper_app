@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { VyApi } from "@/lib/VyApi";
 import { IAccount } from "@/models/Account";
 import { FinvasiaApi } from "@/lib/finvasiaApi";
@@ -20,6 +20,10 @@ import {
 } from "./ui/select";
 import { WsResponse } from "@/types";
 import { updateScript } from "@/store/watchlistSlice";
+import { RootState } from "@/store";
+import { useToast } from "./ui/use-toast";
+import { initOrderList, updateOrderLtp } from "@/store/orderSlice";
+import Order from "./Order";
 
 const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   let vy: VyApi;
@@ -29,10 +33,48 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
     throw Error("uncode part");
   }
 
-  const audioPlayer = useRef(null);
+  const audioPlayer = useRef<HTMLAudioElement>(null);
+  const ws = useRef<WebSocket>(new WebSocket(wsurl));
   const [index, setIndex] = useState(INDEXES[0]);
   const dispatch = useDispatch();
+  const { toast } = useToast();
+  const { ceScript, peScript } = useSelector(
+    (store: RootState) => store.watchlist
+  );
+  const orders = useSelector((store: RootState) => store.orderlist.orders);
 
+  // API Calls
+  async function getOrders(vy: VyApi) {
+    try {
+      const res = await vy.getOrderBook();
+      if ("stat" in res) {
+        toast({ description: res.emsg });
+        return;
+      }
+      // console.log(res);
+      // let filtered = res.filter(
+      //   (res) => res.status === "PENDING" || res.status === "OPEN"
+      // );
+      dispatch(initOrderList(res));
+    } catch (error: any) {
+      toast({ description: error.message });
+    }
+  }
+
+  // async function getPositions(vy: VyApi) {
+  //   try {
+  //     const res = await vy.getPositionBook();
+  //     if ("stat" in res) {
+  //       toast({ description: res.emsg }); //Error Occurred : 5 \"no data\"
+  //       return;
+  //     }
+  //     dispatch(initPosition(res));
+  //   } catch (error: any) {
+  //     toast({ description: error.message });
+  //   }
+  // }
+
+  // Web Socket funciton
   function wsOpen(this: WebSocket, ev: Event) {
     this.send(
       JSON.stringify({
@@ -48,38 +90,97 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   function wsMsg(this: WebSocket, ev: MessageEvent<string>) {
     let data: WsResponse = JSON.parse(ev.data);
     switch (data.t) {
-      // case "ck":
-      //   break;
+      case "ck":
+        let tokens: string[] = [];
+        if (ceScript) tokens.push(`${ceScript.exch}|${ceScript.token}`);
+        if (peScript) tokens.push(`${peScript.exch}|${peScript.token}`);
+
+        tokens = [...tokens, ...orders.map((o) => `${o.exch}|${o.token}`)];
+        console.log(tokens);
+        tokens = tokens.filter((t, i) => tokens.indexOf(t) === i);
+        console.log(tokens);
+        this.send(
+          JSON.stringify({
+            t: "o",
+            uid: account.userId,
+            actid: account.userId,
+          })
+        );
+        // Subcribe Watchlist script touchline
+        ws.current?.send(
+          JSON.stringify({
+            t: "t",
+            k: tokens.join("#"),
+          })
+        );
+        break;
       case "tk":
       case "tf":
         if (data.lp) {
           dispatch(updateScript({ token: data.tk, lp: data.lp }));
+          dispatch(updateOrderLtp({ token: data.tk, lp: data.lp }));
+        }
+        break;
+      case "om":
+        switch (data.reporttype) {
+          case "New":
+          case "Replaced":
+            // getOrders(vy.current!);
+            break;
+          case "Canceled":
+            // dispatch(removeOrdrer(data.norenordno));
+            break;
+          case "Fill":
+            if (data.status === "COMPLETE") {
+              // dispatch(removeOrdrer(data.norenordno));
+            } else {
+              console.log(data);
+            }
+            console.log("init positions sate");
+            // getPositions(vy.current!);
+            break;
+          case "Rejected":
+            toast({ variant: "destructive", description: data.rejreason });
+            getOrders(vy);
+            audioPlayer.current?.play();
+            break;
+          case "NewAck":
+          case "ModAck":
+          case "PendingNew":
+          case "PendingReplace":
+          case "PendingCancel":
+            console.log(data.status);
+            break;
+
+          default:
+            console.log(data);
+            break;
         }
         break;
       default:
-        // audioPlayer.current?.play();
+        audioPlayer.current?.play();
         console.log(data);
     }
   }
 
-  const ws = new WebSocket(wsurl);
-  ws.onopen = wsOpen;
-  ws.onmessage = wsMsg;
-  ws.onclose = (ev) => {
+  ws.current.onopen = wsOpen;
+  ws.current.onmessage = wsMsg;
+  ws.current.onclose = (ev) => {
     console.log("ws close");
   };
-  ws.onerror = (ev) => {
+  ws.current.onerror = (ev) => {
     console.error("ws errror");
   };
 
-  // useEffect(() => {
-  //   return () => {
-  //     ws.close();
-  //   };
-  // }, []);
+  useEffect(() => {
+    getOrders(vy);
+    // return () => {
+    //   ws.close();
+    // };
+  }, []);
 
   return (
-    <div className="min-h-screen px-4">
+    <div className="min-h-screen px-2 sm:px-4">
       <ResizablePanelGroup
         direction="vertical"
         className="min-h-screen border rounded-lg"
@@ -102,11 +203,16 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
               ))}
             </SelectContent>
           </Select>
-          <Watchlist vy={vy} index={index} ws={ws} />
+          <Watchlist vy={vy} index={index} ws={ws.current} />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={40}>
-          <div>order</div>
+          <div>
+            <h2 className="text-center">Orders</h2>
+            {orders.map((order) => (
+              <Order key={order.norenordno} order={order} vy={vy} />
+            ))}
+          </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={40}>
@@ -114,13 +220,6 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
         </ResizablePanel>
       </ResizablePanelGroup>
       <audio ref={audioPlayer} src="/suspense_3.mp3"></audio>
-      <button
-        onClick={() => {
-          // audioPlayer.current?.play();
-        }}
-      >
-        play
-      </button>
     </div>
   );
 };

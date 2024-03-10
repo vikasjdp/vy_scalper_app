@@ -1,10 +1,16 @@
-import { SearchResponse, ErrorResponse, OrderResponse } from "@/types";
+import {
+  SearchResponse,
+  ErrorResponse,
+  OrderResponse,
+  OrderBook,
+  CancelOrderResponse,
+} from "@/types";
 
 import { VyApi } from "./VyApi";
 import { sha256 } from "js-sha256";
 import * as OTPAuth from "otpauth";
 import { IAccount } from "@/models/Account";
-import { OrderType } from "@/validation/order";
+import { MOrder, OrderType } from "@/validation/order";
 
 export class FinvasiaApi implements VyApi {
   baseurl: string = "https://api.shoonya.com/NorenWClientTP";
@@ -69,6 +75,32 @@ export class FinvasiaApi implements VyApi {
       "/PlaceOrder",
       data
     );
+  }
+
+  async modifyOrder(
+    data: MOrder
+  ): Promise<CancelOrderResponse | ErrorResponse> {
+    data.uid = this.uid;
+    data.actid = this.uid;
+    return await this.postCall<CancelOrderResponse | ErrorResponse>(
+      "/ModifyOrder",
+      data
+    );
+  }
+
+  async cancelOrder(
+    norenordno: string
+  ): Promise<CancelOrderResponse | ErrorResponse> {
+    return await this.postCall<CancelOrderResponse | ErrorResponse>(
+      "/CancelOrder",
+      { norenordno, uid: this.uid }
+    );
+  }
+
+  async getOrderBook(): Promise<OrderBook[] | ErrorResponse> {
+    return await this.postCall<OrderBook[] | ErrorResponse>("/OrderBook", {
+      uid: this.uid,
+    });
   }
 
   private async postCall<T>(endpoint: string, payload: {}): Promise<T> {

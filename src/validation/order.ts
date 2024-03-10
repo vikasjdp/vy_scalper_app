@@ -29,3 +29,27 @@ export const OrderShema = z.discriminatedUnion("prctyp", [
 ]);
 
 export type OrderType = z.infer<typeof OrderShema>;
+
+const MOBase = z.object({
+  uid: z.string().optional(),
+  actid: z.string().optional(),
+  exch: z.string(),
+  norenordno: z.string(),
+  tsym: z.string(),
+  qty: z.string(),
+  ret: z.string().default("DAY"),
+});
+
+const MOMkt = MOBase.merge(
+  z.object({ prctyp: z.enum(["MKT"]), prc: z.string().default("0") })
+);
+const MOLimit = MOBase.merge(
+  z.object({
+    prctyp: z.enum(["LMT"]),
+    prc: z.string().min(1, { message: "Price is required" }),
+  })
+);
+
+export const MOSchema = z.discriminatedUnion("prctyp", [MOMkt, MOLimit]);
+
+export type MOrder = z.infer<typeof MOSchema>;

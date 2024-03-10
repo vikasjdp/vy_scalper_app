@@ -24,7 +24,7 @@ export default async function TerminalPage({
   }
   return (
     <StoreProvider>
-      <Terminal account={account} wsurl={wsurl} />;
+      <Terminal account={account} wsurl={wsurl} />
     </StoreProvider>
   );
 }

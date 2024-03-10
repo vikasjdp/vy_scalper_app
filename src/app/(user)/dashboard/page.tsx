@@ -36,13 +36,13 @@ export default async function Dashboard() {
           account._id = account._id?.toString();
           return (
             <Card key={account.userId}>
-              <CardContent className="flex p-2 justify-between items-center">
+              <CardContent className="flex p-2 justify-between items-center text-sm">
                 <Link
                   href={isValid ? `/terminal/${account._id}` : "#"}
                   className={`${buttonVariants({
                     size: "sm",
                     variant: "outline",
-                  })} p-2 mr-4 ${
+                  })} p-2 mr-2 sm:mr-4 ${
                     isValid
                       ? "text-green-500"
                       : "text-red-500 cursor-not-allowed"
@@ -54,7 +54,9 @@ export default async function Dashboard() {
                   <span className="basis-24 h-6 overflow-hidden">
                     {account.name}
                   </span>
-                  <span className="capitalize basis-24">{account.broker}</span>
+                  <span className="hidden sm:block capitalize basis-24">
+                    {account.broker}
+                  </span>
                   <span>{account.userId}</span>
                 </div>
                 <div className="flex">

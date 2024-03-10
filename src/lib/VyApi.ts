@@ -1,5 +1,11 @@
-import { ErrorResponse, OrderResponse, SearchResponse } from "@/types";
-import { OrderType } from "@/validation/order";
+import {
+  CancelOrderResponse,
+  ErrorResponse,
+  OrderBook,
+  OrderResponse,
+  SearchResponse,
+} from "@/types";
+import { MOrder, OrderType } from "@/validation/order";
 
 export interface VyApi {
   uid: string;
@@ -10,4 +16,8 @@ export interface VyApi {
     exch: string
   ): Promise<SearchResponse | ErrorResponse>;
   placeOrder(data: OrderType): Promise<OrderResponse | ErrorResponse>;
+  getOrderBook(): Promise<OrderBook[] | ErrorResponse>;
+  modifyOrder(data: MOrder): Promise<CancelOrderResponse | ErrorResponse>;
+  cancelOrder(norenordno: string): Promise<CancelOrderResponse | ErrorResponse>;
+  // getPositionBook(): Promise<PositionResponse[] | BrokerErrorResponse>;
 }

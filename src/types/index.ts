@@ -4,6 +4,7 @@ import { NFOScript } from "./nfoScript";
 import { OrderResponse } from "./orderResponse";
 import { CancelOrderResponse } from "./cancelOrderResponse";
 import { WsResponse } from "./websocketResponce";
+import { OrderBook } from "./orderbook";
 
 export type {
   ErrorResponse,
@@ -11,5 +12,6 @@ export type {
   NFOScript,
   OrderResponse,
   CancelOrderResponse,
+  OrderBook,
   WsResponse,
 };

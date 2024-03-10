@@ -1,5 +1,5 @@
 "use client";
-import { Account } from "@/models/Account";
+import { IAccount } from "@/models/Account";
 import React from "react";
 import SubmitButton from "./SubmitButton";
 import { Label } from "./ui/label";
@@ -15,7 +15,13 @@ import { BROKER } from "@/lib/constants";
 import { useFormState } from "react-dom";
 import { editAccount } from "@/app/action";
 
-const EditAccountForm = ({ account, id }: { account: Account; id: string }) => {
+const EditAccountForm = ({
+  account,
+  id,
+}: {
+  account: IAccount;
+  id: string;
+}) => {
   const [formState, formAction] = useFormState(editAccount, null);
   return (
     <form action={formAction} className="space-y-4">

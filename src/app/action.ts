@@ -8,7 +8,7 @@ import { registerSchema } from "@/validation/register";
 import mongoose, { MongooseError } from "mongoose";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { HydratedDocument } from "mongoose";
 import { FinvasiaApi } from "@/lib/finvasiaApi";
 import { revalidatePath } from "next/cache";

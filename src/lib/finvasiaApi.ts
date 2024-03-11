@@ -4,6 +4,7 @@ import {
   OrderResponse,
   OrderBook,
   CancelOrderResponse,
+  PositionBook,
 } from "@/types";
 
 import { VyApi } from "./VyApi";
@@ -101,6 +102,13 @@ export class FinvasiaApi implements VyApi {
     return await this.postCall<OrderBook[] | ErrorResponse>("/OrderBook", {
       uid: this.uid,
     });
+  }
+
+  async getPositionBook(): Promise<PositionBook[] | ErrorResponse> {
+    return await this.postCall<PositionBook[] | ErrorResponse>(
+      "/PositionBook",
+      { uid: this.uid, actid: this.uid }
+    );
   }
 
   private async postCall<T>(endpoint: string, payload: {}): Promise<T> {

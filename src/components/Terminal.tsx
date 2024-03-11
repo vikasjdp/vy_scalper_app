@@ -22,8 +22,15 @@ import { WsResponse } from "@/types";
 import { updateScript } from "@/store/watchlistSlice";
 import { RootState } from "@/store";
 import { useToast } from "./ui/use-toast";
-import { initOrderList, updateOrderLtp } from "@/store/orderSlice";
+import {
+  initOrderList,
+  removeOrdrer,
+  updateOrderLtp,
+} from "@/store/orderSlice";
 import Order from "./Order";
+import { initPosition, updatePositionLtp } from "@/store/positionSlice";
+import Position from "./Position";
+import useMediaQuery from "@/hooks/use-media-query";
 
 const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   let vy: VyApi;
@@ -34,14 +41,22 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   }
 
   const audioPlayer = useRef<HTMLAudioElement>(null);
-  const ws = useRef<WebSocket>(new WebSocket(wsurl));
+  const ws = useRef<WebSocket>();
   const [index, setIndex] = useState(INDEXES[0]);
   const dispatch = useDispatch();
   const { toast } = useToast();
+  const { width, height } = useMediaQuery();
+
+  const isDesktop = width > 768;
+  console.log(isDesktop);
+
   const { ceScript, peScript } = useSelector(
     (store: RootState) => store.watchlist
   );
   const orders = useSelector((store: RootState) => store.orderlist.orders);
+  const positons = useSelector(
+    (store: RootState) => store.positionlist.positions
+  );
 
   // API Calls
   async function getOrders(vy: VyApi) {
@@ -52,27 +67,28 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
         return;
       }
       // console.log(res);
-      // let filtered = res.filter(
-      //   (res) => res.status === "PENDING" || res.status === "OPEN"
-      // );
-      dispatch(initOrderList(res));
+      let filtered = res.filter(
+        (res) => res.status === "PENDING" || res.status === "OPEN"
+      );
+      dispatch(initOrderList(filtered));
     } catch (error: any) {
       toast({ description: error.message });
     }
   }
 
-  // async function getPositions(vy: VyApi) {
-  //   try {
-  //     const res = await vy.getPositionBook();
-  //     if ("stat" in res) {
-  //       toast({ description: res.emsg }); //Error Occurred : 5 \"no data\"
-  //       return;
-  //     }
-  //     dispatch(initPosition(res));
-  //   } catch (error: any) {
-  //     toast({ description: error.message });
-  //   }
-  // }
+  async function getPositions(vy: VyApi) {
+    try {
+      const res = await vy.getPositionBook();
+      if ("stat" in res) {
+        toast({ description: res.emsg }); //Error Occurred : 5 \"no data\"
+        return;
+      }
+      console.log(res);
+      dispatch(initPosition(res));
+    } catch (error: any) {
+      toast({ description: error.message });
+    }
+  }
 
   // Web Socket funciton
   function wsOpen(this: WebSocket, ev: Event) {
@@ -95,7 +111,11 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
         if (ceScript) tokens.push(`${ceScript.exch}|${ceScript.token}`);
         if (peScript) tokens.push(`${peScript.exch}|${peScript.token}`);
 
-        tokens = [...tokens, ...orders.map((o) => `${o.exch}|${o.token}`)];
+        tokens = [
+          ...tokens,
+          ...orders.map((o) => `${o.exch}|${o.token}`),
+          ...positons.map((o) => `${o.exch}|${o.token}`),
+        ];
         console.log(tokens);
         tokens = tokens.filter((t, i) => tokens.indexOf(t) === i);
         console.log(tokens);
@@ -119,30 +139,33 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
         if (data.lp) {
           dispatch(updateScript({ token: data.tk, lp: data.lp }));
           dispatch(updateOrderLtp({ token: data.tk, lp: data.lp }));
+          dispatch(updatePositionLtp({ token: data.tk, lp: data.lp }));
         }
         break;
       case "om":
         switch (data.reporttype) {
           case "New":
           case "Replaced":
-            // getOrders(vy.current!);
+            getOrders(vy);
             break;
           case "Canceled":
-            // dispatch(removeOrdrer(data.norenordno));
+            dispatch(removeOrdrer(data.norenordno));
             break;
           case "Fill":
             if (data.status === "COMPLETE") {
-              // dispatch(removeOrdrer(data.norenordno));
+              dispatch(removeOrdrer(data.norenordno));
             } else {
+              console.log("fill");
               console.log(data);
             }
             console.log("init positions sate");
-            // getPositions(vy.current!);
+            audioPlayer.current?.play();
+            getPositions(vy);
             break;
           case "Rejected":
             toast({ variant: "destructive", description: data.rejreason });
-            getOrders(vy);
-            audioPlayer.current?.play();
+            // getOrders(vy);
+            // audioPlayer.current?.play();
             break;
           case "NewAck":
           case "ModAck":
@@ -163,29 +186,31 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
     }
   }
 
-  ws.current.onopen = wsOpen;
-  ws.current.onmessage = wsMsg;
-  ws.current.onclose = (ev) => {
-    console.log("ws close");
-  };
-  ws.current.onerror = (ev) => {
-    console.error("ws errror");
-  };
-
   useEffect(() => {
     getOrders(vy);
-    // return () => {
-    //   ws.close();
-    // };
+    getPositions(vy);
+    ws.current = new WebSocket(wsurl);
+
+    ws.current.onopen = wsOpen;
+    ws.current.onmessage = wsMsg;
+    ws.current.onclose = (ev) => {
+      console.log("ws close");
+    };
+    ws.current.onerror = (ev) => {
+      console.error("ws errror");
+    };
+    return () => {
+      ws.current!.close();
+    };
   }, []);
 
   return (
     <div className="min-h-screen px-2 sm:px-4">
       <ResizablePanelGroup
-        direction="vertical"
+        direction={isDesktop ? "horizontal" : "vertical"}
         className="min-h-screen border rounded-lg"
       >
-        <ResizablePanel defaultSize={40}>
+        <ResizablePanel defaultSize={isDesktop ? 50 : 30}>
           <Select
             value={index}
             onValueChange={(value) => {
@@ -203,20 +228,29 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
               ))}
             </SelectContent>
           </Select>
-          <Watchlist vy={vy} index={index} ws={ws.current} />
+          <Watchlist vy={vy} index={index} ws={ws.current!} />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={40}>
-          <div>
-            <h2 className="text-center">Orders</h2>
-            {orders.map((order) => (
-              <Order key={order.norenordno} order={order} vy={vy} />
-            ))}
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={40}>
-          <div>positsion</div>
+        <ResizablePanel>
+          <ResizablePanelGroup direction="vertical" className="">
+            <ResizablePanel defaultSize={isDesktop ? 50 : 30}>
+              <div>
+                <h2 className="text-center">Orders</h2>
+                {orders.map((order) => (
+                  <Order key={order.norenordno} order={order} vy={vy} />
+                ))}
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={isDesktop ? 50 : 60}>
+              <div>
+                <h2 className="text-center">Positions</h2>
+                {positons.map((p) => (
+                  <Position key={p.token} position={p} vy={vy} />
+                ))}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </ResizablePanel>
       </ResizablePanelGroup>
       <audio ref={audioPlayer} src="/suspense_3.mp3"></audio>

@@ -3,6 +3,7 @@ import {
   ErrorResponse,
   OrderBook,
   OrderResponse,
+  PositionBook,
   SearchResponse,
 } from "@/types";
 import { MOrder, OrderType } from "@/validation/order";
@@ -19,5 +20,5 @@ export interface VyApi {
   getOrderBook(): Promise<OrderBook[] | ErrorResponse>;
   modifyOrder(data: MOrder): Promise<CancelOrderResponse | ErrorResponse>;
   cancelOrder(norenordno: string): Promise<CancelOrderResponse | ErrorResponse>;
-  // getPositionBook(): Promise<PositionResponse[] | BrokerErrorResponse>;
+  getPositionBook(): Promise<PositionBook[] | ErrorResponse>;
 }

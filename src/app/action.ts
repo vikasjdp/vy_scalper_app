@@ -5,11 +5,10 @@ import Account, { IAccount } from "@/models/Account";
 import User from "@/models/User";
 import { AccountSchema } from "@/validation/account";
 import { registerSchema } from "@/validation/register";
-import mongoose, { MongooseError } from "mongoose";
+import { MongooseError, HydratedDocument, Types } from "mongoose";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
-import { HydratedDocument } from "mongoose";
 import { FinvasiaApi } from "@/lib/finvasiaApi";
 import { revalidatePath } from "next/cache";
 
@@ -98,10 +97,15 @@ export async function addAccount(prevState: any, formdata: FormData) {
 
 export async function getAccounts() {
   const session: any = await getServerSession(authOptions);
-  const user = session?.user.id;
+  const user: string = session?.user.id;
   await dbConnect();
   try {
     const accounts: HydratedDocument<IAccount>[] = await Account.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(user),
+        },
+      },
       {
         $project: {
           _id: {
@@ -134,7 +138,7 @@ export async function getAccount(id: string) {
     const account: HydratedDocument<IAccount>[] = await Account.aggregate([
       {
         $match: {
-          _id: new mongoose.Types.ObjectId(id),
+          _id: new Types.ObjectId(id),
         },
       },
       {

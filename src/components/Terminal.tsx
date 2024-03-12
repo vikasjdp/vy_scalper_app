@@ -31,13 +31,14 @@ import Order from "./Order";
 import { initPosition, updatePositionLtp } from "@/store/positionSlice";
 import Position from "./Position";
 import useMediaQuery from "@/hooks/use-media-query";
+import { FlattradeApi } from "@/lib/flattradeApi";
 
 const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   let vy: VyApi;
   if (account.broker === "finvasia") {
     vy = new FinvasiaApi(account.userId, account.token!);
   } else {
-    throw Error("uncode part");
+    vy = new FlattradeApi(account.userId, account.token!);
   }
 
   const audioPlayer = useRef<HTMLAudioElement>(null);

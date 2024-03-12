@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { FinvasiaApi } from "@/lib/finvasiaApi";
 import { revalidatePath } from "next/cache";
+import { FlattradeApi } from "@/lib/flattradeApi";
 
 export async function registerUserAction(prevState: any, formdata: FormData) {
   try {
@@ -189,7 +190,8 @@ export async function getToken(formState: any, formdata: FormData) {
   const id = formdata.get("id");
   await dbConnect();
   const account: HydratedDocument<IAccount> | null = await Account.findById(id);
-  if (account?.broker === "finvasia") {
+  if (!account) return { message: "Daya kuch to gadbad hai" };
+  if (account.broker === "finvasia") {
     const res = await FinvasiaApi.getToken(account);
     if (res.stat === "Ok") {
       account.token = res.susertoken;
@@ -200,10 +202,15 @@ export async function getToken(formState: any, formdata: FormData) {
       };
     }
   } else {
-    console.log("ftcose");
-    return {
-      message: "abni bana nahi hai",
-    };
+    const res = await FlattradeApi.getToken(account);
+    if (res.stat === "Ok") {
+      account.token = res.token;
+      account.save();
+    } else {
+      return {
+        message: res.emsg,
+      };
+    }
   }
   revalidatePath("/dashboard");
 }

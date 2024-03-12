@@ -50,11 +50,6 @@ const Scripts = ({
 
   const form = useForm<OrderType>({
     resolver: zodResolver(OrderShema),
-    defaultValues: {
-      prd: "M",
-      prctyp: "LMT",
-      trantype: "B",
-    },
   });
 
   async function searchScript() {
@@ -95,9 +90,18 @@ const Scripts = ({
     }
   }
 
+  useEffect(() => {
+    form.reset({
+      tsym: script.tsym,
+      exch: script.exch,
+      qty: script.ls,
+      prd: "M",
+      prctyp: "LMT",
+      trantype: "B",
+    });
+  }, [script.tsym]);
+
   const showPriceInput = form.watch("prctyp") === "LMT";
-  form.setValue("tsym", script.tsym);
-  form.setValue("exch", script.exch);
 
   return (
     <div

@@ -16,11 +16,17 @@ export default async function TerminalPage({
   }
   const id = params.id;
   const account = await getAccount(id);
+
+  if (!account) redirect("/dashboard");
+
+  if (!(account.token != "" && account.tokenExp === new Date().toDateString()))
+    redirect("/dashboard");
+
   let wsurl: string;
-  if (account?.broker === "finvasia") {
+  if (account.broker === "finvasia") {
     wsurl = "wss://api.shoonya.com/NorenWSTP/";
   } else {
-    throw Error("Notcode edefose");
+    wsurl = "wss://piconnect.flattrade.in/PiConnectWSTp/";
   }
   return (
     <StoreProvider>

@@ -48,7 +48,6 @@ const Terminal = ({ account, wsurl }: { account: IAccount; wsurl: string }) => {
   const { width, height } = useMediaQuery();
 
   const isDesktop = width > 768;
-  console.log(isDesktop);
 
   const { ceScript, peScript } = useSelector(
     (store: RootState) => store.watchlist

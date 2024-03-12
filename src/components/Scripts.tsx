@@ -1,7 +1,7 @@
 "use client";
 import { VyApi } from "@/lib/VyApi";
 import { NFOScript } from "@/types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { useToast } from "./ui/use-toast";
 import { useDispatch } from "react-redux";
 import { addToWatchlist } from "@/store/watchlistSlice";
@@ -51,8 +51,6 @@ const Scripts = ({
   const form = useForm<OrderType>({
     resolver: zodResolver(OrderShema),
     defaultValues: {
-      exch: script.exch,
-      tsym: script.tsym,
       prd: "M",
       prctyp: "LMT",
       trantype: "B",
@@ -98,6 +96,8 @@ const Scripts = ({
   }
 
   const showPriceInput = form.watch("prctyp") === "LMT";
+  form.setValue("tsym", script.tsym);
+  form.setValue("exch", script.exch);
 
   return (
     <div
@@ -105,41 +105,41 @@ const Scripts = ({
         optt == "CE" ? "bg-teal-800" : "bg-rose-900"
       } w-52 p-2 rounded-lg`}
     >
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          {showInput ? (
+            <div className="flex items-center">
+              <Input
+                className="border-0 p-0 h-6 focus-visible:ring-0"
+                placeholder="Strick Price"
+                value={strick}
+                onChange={(e) => {
+                  setStrick(e.target.value);
+                }}
+              />
+              <span
+                className="cursor-pointer"
+                onClick={() => {
+                  setShowInput(false);
+                }}
+              >
+                x
+              </span>{" "}
+            </div>
+          ) : (
+            <span
+              onClick={() => {
+                setShowInput(true);
+              }}
+            >
+              {script.dname.split(" ")[2]} {optt}
+            </span>
+          )}
+        </div>
+        <div className="font-bold">{script.ltp}</div>
+      </div>
       <Form {...form}>
         <form>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              {showInput ? (
-                <div className="flex items-center">
-                  <Input
-                    className="border-0 p-0 h-6 focus-visible:ring-0"
-                    placeholder="Strick Price"
-                    value={strick}
-                    onChange={(e) => {
-                      setStrick(e.target.value);
-                    }}
-                  />
-                  <span
-                    className="cursor-pointer"
-                    onClick={() => {
-                      setShowInput(false);
-                    }}
-                  >
-                    x
-                  </span>{" "}
-                </div>
-              ) : (
-                <span
-                  onClick={() => {
-                    setShowInput(true);
-                  }}
-                >
-                  {script.dname.split(" ")[2]} {optt}
-                </span>
-              )}
-            </div>
-            <div className="font-bold">{script.ltp}</div>
-          </div>
           <div>
             <FormField
               name="prctyp"
